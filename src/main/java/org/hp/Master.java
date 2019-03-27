@@ -65,7 +65,7 @@ public class Master implements Watcher {
     }
 
     public static void main(String[] args) throws IOException, KeeperException, InterruptedException {
-        Master m = new Master("192.168.1.10:2181");
+        Master m = new Master("192.168.1.25:2181");
         m.startZK();
         m.runForMaster();
         if(isLeader){
