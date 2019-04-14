@@ -3,7 +3,7 @@
  * <p>
  * Created on 2019/3/24.
  */
-package org.hp;
+package org.hp.example.master;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
