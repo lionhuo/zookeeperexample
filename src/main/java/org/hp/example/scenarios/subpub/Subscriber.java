@@ -13,42 +13,85 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.*;
 import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
 
 public class Subscriber implements Watcher {
     static Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private ZooKeeper zk;
     private String hostPort;
     private String nodePath;
-    private String filePath;
-    private static String PARENT_PATH = "/config/lms/agent";
+    private String localFilePath;
+    private static String SUBLIST_PATH = "/config/sublist";
+    private static String ROOT_PATH = "/config";
     private Stat stat = new Stat();
 
     @Override
     public void process(WatchedEvent watchedEvent) {
         System.out.println(watchedEvent);
         if(watchedEvent.getType() == Event.EventType.NodeDataChanged){
-            subscribe();
+            logger.info("===> node data changed. changed node path:{}", watchedEvent.getPath());
+            retrieveNodeData(watchedEvent.getPath());
         }
     }
 
-    public Subscriber(String hostPort, String nodePath, String filePath){
+    public Subscriber(String hostPort, String nodePath, String localFilePath){
         this.hostPort = hostPort;
         this.nodePath = nodePath;
-        this.filePath = filePath;
+        this.localFilePath = localFilePath;
     }
 
     public void startZK() throws IOException {
         zk = new ZooKeeper(hostPort, 15000, this);
     }
 
-    public void subscribe(){
+    public String getSubList(){
         try {
-            byte[] data = zk.getData(PARENT_PATH + "/" + nodePath, true, stat);
-            System.out.println(new String(data));
-        } catch (KeeperException | InterruptedException e) {
+            byte[] data = zk.getData(SUBLIST_PATH + "/" + nodePath, true, null);
+            String dataStr = new String(data, "UTF-8");
+            System.out.println("===> sub data list:" + dataStr);
+            return dataStr;
+        } catch (KeeperException | InterruptedException | UnsupportedEncodingException e) {
+            logger.error("===> initial subscribe list failed. message:{}, node:{}", nodePath, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    public void subscribe(String subList){
+        Arrays.stream(subList.split(",")).forEach(subNode -> {
+            try {
+                String nodePath = ROOT_PATH + subNode;
+                Stat stat = zk.exists(nodePath, true);
+                logger.info("===> subscribe success. node path:{}, node stat:{}", nodePath, stat);
+                retrieveNodeData(nodePath);
+            } catch (KeeperException | InterruptedException e) {
+                logger.error("===> subscribe node filed. message:{}, subNode:{}", e.getMessage(), subNode, e);
+            }
+        });
+    }
+
+    public void retrieveNodeData(String nodePath){
+        try {
+            byte[] data = zk.getData(nodePath, true, stat);
+            String fileName = nodePath.replaceAll("\\/", ".");
+            fileName = fileName.substring(fileName.indexOf(".") + 1);
+            String filePath = localFilePath + "/" + fileName;
+            logger.info("===> retrieve node data. file path:{}", filePath);
+            writeToLocalFile(new String(data, "UTF-8"), filePath);
+        } catch (KeeperException | InterruptedException | UnsupportedEncodingException e) {
             e.printStackTrace();
+        }
+    }
+
+
+
+    public void writeToLocalFile(String data, String filePath){
+        try(FileWriter fw = new FileWriter(new File(filePath));
+            BufferedWriter bw = new BufferedWriter(fw)){
+            bw.write(data);
+        } catch (IOException e) {
+            logger.error("===> write to local file failed. message:{}", e.getMessage(), e);
         }
     }
 
@@ -56,12 +99,13 @@ public class Subscriber implements Watcher {
         //params
         String hostPort = args[0];
         String nodePath = args[1];
-        String filePath = args[2];
+        String localFilePath = args[2];
 
-        Subscriber subscriber = new Subscriber(hostPort, nodePath, filePath);
+        Subscriber subscriber = new Subscriber(hostPort, nodePath, localFilePath);
         try {
             subscriber.startZK();
-            subscriber.subscribe();
+            String subList = subscriber.getSubList();
+            subscriber.subscribe(subList);
 
             Thread.sleep(Long.MAX_VALUE);
         } catch (IOException | InterruptedException e) {
