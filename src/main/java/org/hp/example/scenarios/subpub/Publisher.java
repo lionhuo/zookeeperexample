@@ -20,9 +20,9 @@ public class Publisher implements Watcher {
     private ZooKeeper zk;
     private String hostPort;
     private static String INITIAL = "initial";
-    private static String UPDATE = "modify";
-    private static String ROOT_PATH = "/config";
-    private static String SUBLIST_PATH = "/config/sublist";
+    private static String UPDATE = "update";
+    private static String ROOT_PATH = "/swiftcoder/config";
+    private static String SUBLIST_PATH = "/swiftcoder/config/sublist";
 
     public Publisher(String hostPort){
         this.hostPort = hostPort;
@@ -44,10 +44,14 @@ public class Publisher implements Watcher {
      */
     private void initial(String cNodePath, String initialFilePath){
         //create subscribe root path
-        createNodeRecursion(SUBLIST_PATH);
+//        createNodeRecursion(SUBLIST_PATH);
         Arrays.stream(cNodePath.split(",")).forEach(node -> {
             try {
                 String subList = new String(zk.getData(SUBLIST_PATH + "/" + node, false, null), "UTF-8");
+                // /203.117.147.201/lms/agent/env.conf,/203.117.147.201/lms/agent/settings-prod.properties,
+                // /203.117.147.201/lms/recording/env.conf,/203.117.147.201/lms/recording/settings-prod.properties,
+                // /203.117.147.201/vms/media-server/env.conf,/203.117.147.201/vms/media-server/settings-prod.properties,
+                // /203.117.147.201/vms/wd/env.conf,/203.117.147.201/vms/wd/settings-prod.properties
                 logger.info("===> node:{} subscribe list:{}", node, subList);
                 createSubListNodePath(subList);
                 setSubListNodeData(subList, initialFilePath);
@@ -172,10 +176,12 @@ public class Publisher implements Watcher {
         Arrays.stream(cNodePath.split(",")).forEach(node -> {
             if(!node.isEmpty()){
                 try {
-                    String updateData = readFromFilePath(updateFilePath);
-                    String nodeData = new String(zk.getData("/" + node, true, null), "UTF-8");
-                    zk.setData("/" + node, (nodeData + updateData).getBytes(), -1);
-                } catch (KeeperException | InterruptedException | UnsupportedEncodingException e) {
+                    // node: 203.117.147.201/lms/agent/env.conf -> fileName: 203.117.147.201.lms.agent.env.conf
+                    String fileName = node.replaceAll("/", ".");
+                    String updateData = readFromFilePath(updateFilePath + "/" + fileName);
+//                    String nodeData = new String(zk.getData("/" + node, true, null), "UTF-8");
+                    zk.setData(ROOT_PATH + "/" + node, updateData.getBytes(), -1);
+                } catch (KeeperException | InterruptedException e) {
                     logger.error("===> get node data failed. node:{}", node);
                 }
             }

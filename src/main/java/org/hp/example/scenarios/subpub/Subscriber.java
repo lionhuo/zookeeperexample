@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.lang.invoke.MethodHandles;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 
 public class Subscriber implements Watcher {
     static Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -23,9 +25,10 @@ public class Subscriber implements Watcher {
     private String hostPort;
     private String nodePath;
     private String localFilePath;
-    private static String SUBLIST_PATH = "/config/sublist";
-    private static String ROOT_PATH = "/config";
+    private static String SUBLIST_PATH = "/swiftcoder/config/sublist";
+    private static String ROOT_PATH = "/swiftcoder/config";
     private Stat stat = new Stat();
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
 
     @Override
     public void process(WatchedEvent watchedEvent) {
@@ -72,11 +75,20 @@ public class Subscriber implements Watcher {
     }
 
     public void retrieveNodeData(String nodePath){
+        //nodePath: /swiftcoder/config/192.168.1.25/lms/agent/env.conf
+        //writeToLocalFile: ${date}/lms.agent/env.conf
         try {
             byte[] data = zk.getData(nodePath, true, stat);
-            String fileName = nodePath.replaceAll("\\/", ".");
-            fileName = fileName.substring(fileName.indexOf(".") + 1);
-            String filePath = localFilePath + "/" + fileName;
+//            String fileName = nodePath.replaceAll("\\/", ".");
+//            fileName = fileName.substring(fileName.indexOf(".") + 1);
+            String[] pathArray = nodePath.split("\\/");
+            String fileName = pathArray[pathArray.length - 1];
+            String directoryName = dateFormat.format(new Date()) + "/" + pathArray[pathArray.length - 3] + "." + pathArray[pathArray.length - 2];
+
+            File fileDir = new File(localFilePath + "/" + directoryName);
+            fileDir.mkdirs();
+
+            String filePath = localFilePath + "/" + directoryName + "/" + fileName;
             logger.info("===> retrieve node data. file path:{}", filePath);
             writeToLocalFile(new String(data, "UTF-8"), filePath);
         } catch (KeeperException | InterruptedException | UnsupportedEncodingException e) {
