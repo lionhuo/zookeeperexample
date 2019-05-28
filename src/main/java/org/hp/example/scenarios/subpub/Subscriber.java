@@ -51,7 +51,7 @@ public class Subscriber implements Watcher {
 
     public String getSubList(){
         try {
-            byte[] data = zk.getData(SUBLIST_PATH + "/" + nodePath, true, null);
+            byte[] data = zk.getData(SUBLIST_PATH + "/" + nodePath, false, null);
             String dataStr = new String(data, "UTF-8");
             System.out.println("===> sub data list:" + dataStr);
             return dataStr;
@@ -75,7 +75,7 @@ public class Subscriber implements Watcher {
     }
 
     public void retrieveNodeData(String nodePath){
-        //nodePath: /swiftcoder/config/192.168.1.25/lms/agent/env.conf
+        //nodePath: /swiftcoder/config/192.168.1.25/lms/agent/env.conf  /swiftcoder/config/common/ta_script
         //writeToLocalFile: ${date}/lms.agent/env.conf
         try {
             byte[] data = zk.getData(nodePath, true, stat);
