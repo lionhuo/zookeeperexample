@@ -190,10 +190,10 @@ public class Publisher implements Watcher {
 
     public static void main(String[] args) { //args0:hostPort, args1:operate type, args2:child node path, args3:initial file path/update file path
         //params
-        String hostPort = args[0];
-        String opType = args[1];
-        String cNodePath = args[2];
-        String filePath = args[3];
+        String hostPort = args[0]; //  192.168.1.25:2181
+        String opType = args[1]; // update
+        String cNodePath = args[2]; //  192.168.1.25/lms/agent/env.conf
+        String filePath = args[3];  // /opt/app/ta.config/config-files/
         logger.info("===> params, hostPort:{}, opType:{}, cNodePath:{}, filePath:{}", hostPort, opType,cNodePath, filePath);
         //create zkClient
         Publisher publisher = new Publisher(hostPort);
